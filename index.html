@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flashcards</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f5f5f7;
+  color: #1d1d1f;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  -webkit-font-smoothing: antialiased;
+}
+h1 {
+  margin: 30px 0 12px;
+  font-size: 1.3em;
+  font-weight: 300;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #002FA7;
+}
+.controls { display: flex; gap: 6px; margin: 10px 16px; flex-wrap: wrap; justify-content: center; }
+button {
+  background: #fff;
+  color: #666;
+  border: 1px solid #ddd;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.8em;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+}
+button:hover { color: #002FA7; border-color: #002FA7; }
+button.active { background: #002FA7; color: #fff; border-color: #002FA7; }
+.counter { color: #999; font-size: 0.8em; margin: 6px 0; font-weight: 300; }
+
+.card-container {
+  perspective: 900px;
+  width: 90%;
+  max-width: 520px;
+  min-height: 300px;
+  margin: 20px 0;
+  cursor: pointer;
+}
+.card {
+  width: 100%;
+  min-height: 300px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.card.flipped { transform: rotateY(180deg); }
+.card-face {
+  position: absolute;
+  width: 100%;
+  min-height: 300px;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 28px;
+  text-align: center;
+  line-height: 1.7;
+  background: #fff;
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 2px 20px rgba(0,47,167,0.08);
+}
+.card-front .card-text {
+  font-size: 1.35em;
+  font-weight: 500;
+  color: #002FA7;
+  letter-spacing: -0.01em;
+}
+.card-back {
+  transform: rotateY(180deg);
+  justify-content: flex-start;
+  padding: 24px 28px 20px;
+}
+.card-back .card-text {
+  font-size: 0.82em;
+  text-align: left;
+  color: #333;
+  font-weight: 300;
+  line-height: 1.85;
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+}
+.card-back .card-text ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.card-back .card-text li {
+  padding: 1px 0;
+}
+.card-back .card-text li::before {
+  content: '→ ';
+  color: #002FA7;
+  font-weight: 500;
+}
+.card-label {
+  font-size: 0.65em;
+  color: #002FA7;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  font-weight: 500;
+  opacity: 0.6;
+}
+
+.card-links {
+  display: flex;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+  flex-shrink: 0;
+}
+.card-link {
+  padding: 6px 16px;
+  background: transparent;
+  color: #002FA7;
+  border: 1px solid #b0c4f5;
+  border-radius: 20px;
+  font-size: 0.73em;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: 0.03em;
+  transition: all 0.2s;
+}
+.card-link:hover { background: #002FA7; color: #fff; border-color: #002FA7; }
+
+.nav { display: flex; gap: 10px; margin: 8px 0; }
+.nav button {
+  font-size: 1em;
+  padding: 10px 22px;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actions { display: flex; gap: 6px; margin: 12px 0 30px; flex-wrap: wrap; justify-content: center; }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,47,167,0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 10;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: #fff;
+  border: none;
+  border-radius: 16px;
+  padding: 28px;
+  width: 90%;
+  max-width: 440px;
+  box-shadow: 0 4px 30px rgba(0,0,0,0.15);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal h2 {
+  color: #002FA7;
+  margin-bottom: 18px;
+  font-size: 1em;
+  font-weight: 500;
+}
+.modal label {
+  display: block;
+  margin: 12px 0 4px;
+  font-size: 0.75em;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.modal input, .modal textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #f5f5f7;
+  color: #1d1d1f;
+  font-size: 0.9em;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.modal input:focus, .modal textarea:focus { border-color: #002FA7; }
+.modal textarea { height: 80px; resize: vertical; }
+.modal .btn-row { display: flex; gap: 8px; margin-top: 18px; }
+.modal .btn-row button { flex: 1; padding: 10px; }
+.modal .btn-row button:last-child { background: #002FA7; color: #fff; border-color: #002FA7; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<h1>Flashcards</h1>
+
+<div class="controls" id="subjects"></div>
+<div class="counter" id="counter"></div>
+
+<div class="card-container" onclick="handleCardClick(event)">
+  <div class="card" id="card">
+    <div class="card-face card-front">
+      <div class="card-label">Question</div>
+      <div class="card-text" id="front-text"></div>
+    </div>
+    <div class="card-face card-back">
+      <div class="card-label">Réponse</div>
+      <div class="card-text" id="back-text"></div>
+      <div class="card-links" id="card-links">
+        <a class="card-link" id="see-work-btn" href="#" target="_blank" onclick="event.stopPropagation()">Voir l'oeuvre</a>
+        <a class="card-link" id="wiki-btn" href="#" target="_blank" onclick="event.stopPropagation()">Wikipedia</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="nav">
+  <button onclick="prev()">&#9664;</button>
+  <button onclick="next()">&#9654;</button>
+</div>
+
+<div class="actions">
+  <button onclick="openAI()">+ Générer</button>
+  <button onclick="openAdd()">+ Manuel</button>
+  <button onclick="openImportExport()">Import / Export</button>
+  <button onclick="deleteCard()">Supprimer</button>
+  <button onclick="resetCards()">Reset</button>
+</div>
+
+<!-- AI Generate modal -->
+<div class="modal-overlay" id="ai-modal">
+  <div class="modal">
+    <h2>Génération auto</h2>
+    <label>Nom (artiste, photographe, mouvement...)</label>
+    <input id="ai-name" placeholder="ex: Frida Kahlo" autofocus>
+    <label>Catégorie</label>
+    <input id="ai-subject" list="subject-list-ai" placeholder="ex: Art contemporain" value="Art contemporain">
+    <datalist id="subject-list-ai"></datalist>
+    <label>Clé API Anthropic (stockée localement)</label>
+    <input id="api-key" type="password" placeholder="sk-ant-...">
+    <div class="btn-row">
+      <button onclick="closeAI()">Annuler</button>
+      <button onclick="generateCard()" id="ai-gen-btn">Générer la fiche</button>
+    </div>
+    <div id="ai-status" style="margin-top:12px;font-size:0.8em;color:#999;"></div>
+    <!-- Preview before saving -->
+    <div id="ai-preview" style="display:none;margin-top:16px;padding:16px;background:#f5f5f7;border-radius:10px;">
+      <div id="ai-preview-text" style="font-size:0.85em;line-height:1.7;color:#333;"></div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button onclick="discardGenerated()">Rejeter</button>
+        <button onclick="acceptGenerated()">Ajouter la carte</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add card modal (manual) -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <h2>Ajout manuel</h2>
+    <label>Sujet</label>
+    <input id="new-subject" list="subject-list" placeholder="ex: Art contemporain">
+    <datalist id="subject-list"></datalist>
+    <label>Question (face avant)</label>
+    <textarea id="new-question" placeholder="Qui est ... ?"></textarea>
+    <label>Réponse (bullet points, un par ligne)</label>
+    <textarea id="new-answer" placeholder="Peintre français (1950)&#10;Connu pour ...&#10;Oeuvre clé : ..."></textarea>
+    <label>Recherche image (Google Images)</label>
+    <input id="new-img" placeholder="ex: Cindy Sherman Untitled Film Stills">
+    <label>Page Wikipedia (slug)</label>
+    <input id="new-wiki" placeholder="ex: Cindy_Sherman">
+    <div class="btn-row">
+      <button onclick="closeAdd()">Annuler</button>
+      <button onclick="saveCard()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import/Export modal -->
+<div class="modal-overlay" id="ie-modal">
+  <div class="modal">
+    <h2>Import / Export (JSON)</h2>
+    <textarea id="ie-data" style="height:150px"></textarea>
+    <div class="btn-row">
+      <button onclick="closeIE()">Fermer</button>
+      <button onclick="importData()">Importer</button>
+      <button onclick="exportData()">Exporter</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'flashcards_v3';
+
+const DEFAULT_CARDS = [
+  // ── ART CONTEMPORAIN ──
+  {s:"Art contemporain",q:"Qui est Cindy Sherman ?",a:"🇺🇸 Photographe américaine (1954)\nSe photographie déguisée en stéréotypes féminins\nOeuvre clé : Untitled Film Stills (1977-80)\nCritique la représentation des femmes dans les médias\nRecord : 3,89 M$",img:"Cindy Sherman Untitled Film Stills",wiki:"Cindy_Sherman"},
+  {s:"Art contemporain",q:"Qui est Basquiat ?",a:"🇺🇸 Peintre américain (1960-1988)\nOrigine haïtienne-portoricaine, ex-graffeur SAMO©\nStyle : couronnes, anatomie, jazz, histoire noire\nPropulsé par Andy Warhol\nMort à 27 ans — Record : 110,5 M$",img:"Basquiat Untitled 1982 skull",wiki:"Jean-Michel_Basquiat"},
+  {s:"Art contemporain",q:"Qui est Marina Abramović ?",a:"🇷🇸 Artiste serbe (1946)\nPionnière de l'art performance\nOeuvre clé : The Artist is Present (MoMA, 2010)\nAssise immobile 736 heures face aux visiteurs\nSurnommée la 'grand-mère de la performance'",img:"Marina Abramovic The Artist is Present",wiki:"Marina_Abramovi%C4%87"},
+  {s:"Art contemporain",q:"Qui est Jeff Koons ?",a:"🇺🇸 Artiste américain (1955), néo-pop\nEx-courtier à Wall Street\nSculptures géantes en acier miroir : Balloon Dog, Rabbit\nCélèbre le kitsch et le consumérisme\nRecord : Rabbit 91,1 M$",img:"Jeff Koons Balloon Dog sculpture",wiki:"Jeff_Koons"},
+  {s:"Art contemporain",q:"Qui est Yayoi Kusama ?",a:"🇯🇵 Artiste japonaise (1929)\nHallucinations de pois depuis l'enfance = sa signature\nOeuvre clé : Infinity Mirror Rooms\nVit en hôpital psychiatrique à Tokyo depuis 1977\nArtiste femme la plus vendue au monde",img:"Yayoi Kusama Infinity Mirror Room",wiki:"Yayoi_Kusama"},
+  {s:"Art contemporain",q:"Qui est Damien Hirst ?",a:"🇬🇧 Artiste britannique (1965)\nLeader des Young British Artists (YBA)\nRequin dans du formaldéhyde, crâne aux diamants\nVente directe chez Sotheby's : 111 M£\nThème central : la mort",img:"Damien Hirst shark formaldehyde",wiki:"Damien_Hirst"},
+  {s:"Art contemporain",q:"Qui est Ai Weiwei ?",a:"🇨🇳 Artiste et activiste chinois (1957)\nCo-architecte du Nid d'oiseau (JO 2008)\nOeuvre clé : Sunflower Seeds (100M graines en porcelaine)\nDétenu 81 jours par le régime chinois\nArt = arme politique",img:"Ai Weiwei Sunflower Seeds Tate",wiki:"Ai_Weiwei"},
+  {s:"Art contemporain",q:"Qui est Banksy ?",a:"🇬🇧 Street artiste anonyme (actif ~1990)\nPochoirs satiriques : guerre, capitalisme, surveillance\nOeuvre clé : Girl with Balloon (auto-détruite chez Sotheby's)\nRevendue 18,6 M£ en 2021\nFresques sur le mur de Palestine",img:"Banksy Girl with Balloon",wiki:"Banksy"},
+  {s:"Art contemporain",q:"Qui est Louise Bourgeois ?",a:"🇫🇷 Artiste franco-américaine (1911-2010)\nThèmes : sexualité, famille, inconscient\nOeuvre clé : Maman (araignée géante de 9 m)\n1re femme rétrospective au MoMA (1982)\nA travaillé jusqu'à 98 ans",img:"Louise Bourgeois Maman spider",wiki:"Louise_Bourgeois"},
+  {s:"Art contemporain",q:"Qui est Gerhard Richter ?",a:"🇩🇪 Peintre allemand (1932)\nA fui la RDA en 1961\nPhotos floues peintes, abstractions au racloir\nRefuse tout dogme stylistique\n+3000 oeuvres — Record : 46,3 M$",img:"Gerhard Richter Abstraktes Bild",wiki:"Gerhard_Richter"},
+  {s:"Art contemporain",q:"Qui est Takashi Murakami ?",a:"🇯🇵 Artiste japonais (1962)\nFondateur du mouvement Superflat\nFusion manga + anime + pop + art traditionnel\nCollabs : Louis Vuitton, Kanye West, Billie Eilish\nOeuvre clé : fleurs souriantes",img:"Takashi Murakami flowers",wiki:"Takashi_Murakami"},
+  {s:"Art contemporain",q:"Qui est Tracey Emin ?",a:"🇬🇧 Artiste britannique (1963), YBA\nArt autobiographique radical\nOeuvre clé : My Bed (vrai lit défait, Turner Prize)\nExplore vulnérabilité et traumatisme\nAnoblie Dame en 2024",img:"Tracey Emin My Bed",wiki:"Tracey_Emin"},
+  {s:"Art contemporain",q:"Qui est Kara Walker ?",a:"🇺🇸 Artiste afro-américaine (1969)\nSilhouettes en papier noir : esclavage et racisme\nOeuvre clé : A Subtlety (sphinx en sucre, Brooklyn 2014)\nPlus jeune MacArthur Fellow (28 ans)",img:"Kara Walker A Subtlety",wiki:"Kara_Walker"},
+  {s:"Art contemporain",q:"Qui est Olafur Eliasson ?",a:"🇩🇰🇮🇸 Artiste dano-islandais (1967)\nTravaille avec lumière, eau, perception\nOeuvre clé : The Weather Project (Tate, 2003)\n2 millions de visiteurs\nEngagé climat : Ice Watch",img:"Olafur Eliasson Weather Project",wiki:"Olafur_Eliasson"},
+  {s:"Art contemporain",q:"Qui est Maurizio Cattelan ?",a:"🇮🇹 Artiste italien (1960)\nLe 'farceur' du monde de l'art\nPape écrasé par météorite, toilettes en or\nOeuvre clé : Comedian (banane scotchée = 120 000 $)\nQuestionne la valeur de l'art",img:"Maurizio Cattelan Comedian banana",wiki:"Maurizio_Cattelan"},
+  {s:"Art contemporain",q:"Qui est Kehinde Wiley ?",a:"🇺🇸 Peintre américain (1977)\nPortraits de personnes noires en poses classiques\nStreet wear sur fonds fleuris\nOeuvre clé : portrait officiel d'Obama (2018)\n1er artiste afro-américain à le faire",img:"Kehinde Wiley Obama portrait",wiki:"Kehinde_Wiley"},
+  {s:"Art contemporain",q:"Qui est Niki de Saint Phalle ?",a:"🇫🇷 Artiste franco-américaine (1930-2002)\nAutodidacte, Nouveaux Réalistes\nOeuvre clé : les Nanas (femmes géantes colorées)\nJardin des Tarots (Toscane)\nFontaine Stravinsky (Pompidou) avec Tinguely",img:"Niki de Saint Phalle Nanas",wiki:"Niki_de_Saint_Phalle"},
+  {s:"Art contemporain",q:"Qui est Anselm Kiefer ?",a:"🇩🇪 Peintre/sculpteur allemand (1945)\nConfrontre nazisme, mythologie, mémoire allemande\nTableaux avec plomb, paille, cendre, cheveux\nOeuvre clé : Margarethe / Sulamith\nAtelier de 35 ha à Barjac (France)",img:"Anselm Kiefer Margarethe",wiki:"Anselm_Kiefer"},
+  {s:"Art contemporain",q:"Qui est Christo ?",a:"🇧🇬 Christo (1935-2020) et Jeanne-Claude (1935-2009)\nEmpaquetages monumentaux autofinancés\nPont-Neuf, Reichstag, Central Park\nOeuvre clé : Arc de Triomphe empaqueté (2021, posthume)\nDes décennies de négociations par projet",img:"Christo wrapped Reichstag",wiki:"Christo_and_Jeanne-Claude"},
+  {s:"Art contemporain",q:"Qui est Lucio Fontana ?",a:"🇦🇷🇮🇹 Artiste italo-argentin (1899-1968)\nFondateur du Spatialisme\nOeuvre clé : Concetto Spaziale (toiles lacérées)\nFentes au cutter qui ouvrent la peinture vers l'au-delà\nPrécurseur de l'art contemporain",img:"Lucio Fontana Concetto Spaziale",wiki:"Lucio_Fontana"},
+  {s:"Art contemporain",q:"Qui est Daniel Buren ?",a:"🇫🇷 Artiste français (1938)\nSignature : bandes verticales de 8,7 cm\nOeuvre clé : colonnes du Palais-Royal (1986)\nTravaille 'in situ' (chaque oeuvre pour un lieu)\nTrès controversé à l'époque",img:"Daniel Buren colonnes Palais Royal",wiki:"Daniel_Buren"},
+  {s:"Art contemporain",q:"Qui est Christian Boltanski ?",a:"🇫🇷 Artiste français (1944-2021)\nThèmes : mémoire, absence, Shoah\nVêtements usagés, photos d'anonymes\nOeuvre clé : Personnes (Grand Palais, 2010)\nMontagne de vêtements + grue",img:"Christian Boltanski Personnes",wiki:"Christian_Boltanski"},
+  {s:"Art contemporain",q:"Qui est Sophie Calle ?",a:"🇫🇷 Artiste française (1953)\nMêle art, vie privée et filature\nA suivi des inconnus, engagé un détective pour la suivre\nOeuvre clé : Prenez soin de vous\nBrouille fiction et réalité",img:"Sophie Calle Prenez soin de vous",wiki:"Sophie_Calle"},
+  {s:"Art contemporain",q:"Qui est JR ?",a:"🇫🇷 Artiste français (1983)\nPortraits géants N&B collés sur bâtiments\nPyramide du Louvre, mur USA-Mexique\nOeuvre clé : Women Are Heroes\nAnonyme (lunettes noires, chapeau)",img:"JR artiste pyramide Louvre",wiki:"JR_(artist)"},
+  {s:"Art contemporain",q:"Qui est David Hockney ?",a:"🇬🇧 Peintre britannique (1937)\nPiscines californiennes, paysages du Yorkshire\nOeuvre clé : A Bigger Splash (1967)\nPionnier de l'art sur iPad\nRecord : 90,3 M$",img:"David Hockney A Bigger Splash",wiki:"David_Hockney"},
+  {s:"Art contemporain",q:"Qui est Antony Gormley ?",a:"🇬🇧 Sculpteur britannique (1950)\nMoule son propre corps en métal\nOeuvre clé : Angel of the North (ange de 20 m)\nAnother Place : 100 figures face à la mer\nTurner Prize 1994",img:"Antony Gormley Angel of the North",wiki:"Antony_Gormley"},
+  {s:"Art contemporain",q:"Qui est Hilma af Klint ?",a:"🇸🇪 Artiste suédoise (1862-1944)\nAbstractions dès 1906 — avant Kandinsky\nInfluencée par théosophie et spiritisme\nOeuvre clé : The Ten Largest\nRedécouverte Guggenheim 2018 (600 000 visiteurs)",img:"Hilma af Klint The Ten Largest",wiki:"Hilma_af_Klint"},
+  {s:"Art contemporain",q:"Qui est Claes Oldenburg ?",a:"🇸🇪🇺🇸 Artiste suédo-américain (1929-2022)\nSculptures géantes d'objets banals\nOeuvre clé : Spoonbridge and Cherry\nPop Art — transforme le banal en monumental\nPince à linge de 13 m, tube de rouge à lèvres",img:"Claes Oldenburg Spoonbridge Cherry",wiki:"Claes_Oldenburg"},
+  {s:"Art contemporain",q:"Qui est Jan Fabre ?",a:"🇧🇪 Artiste belge (1958)\nSculptures en élytres de scarabées (vert irisé)\nOeuvre clé : Heaven of Delight (Palais Royal, Bruxelles)\nPerformances extrêmes\nMêle science, mythologie et corps",img:"Jan Fabre Heaven of Delight",wiki:"Jan_Fabre"},
+  {s:"Art contemporain",q:"Qui est Wim Delvoye ?",a:"🇧🇪 Artiste belge (1965)\nProvocateur conceptuel\nOeuvre clé : Cloaca (machine digestive)\nCochons tatoués, Tours Eiffel gothiques\nQuestionne valeur, goût et tabous",img:"Wim Delvoye Cloaca machine",wiki:"Wim_Delvoye"},
+  {s:"Art contemporain",q:"Qui est Luc Tuymans ?",a:"🇧🇪 Peintre belge (1958)\nPeintures pâles, délavées, à partir de photos\nThèmes : Shoah, colonialisme belge au Congo\nOeuvre clé : The Secretary of State\nUn des plus influents depuis Richter",img:"Luc Tuymans painting",wiki:"Luc_Tuymans"},
+  {s:"Art contemporain",q:"Qui est Francis Alÿs ?",a:"🇧🇪 Artiste belgo-mexicain (1959)\nVit à Mexico depuis 1986\nOeuvre clé : Paradox of Praxis (pousse un bloc de glace)\nDéplace une dune avec 500 volontaires\nGeste minimal, impact maximal",img:"Francis Alys Paradox of Praxis",wiki:"Francis_Al%C3%BFs"},
+
+  // ── PHOTOGRAPHIE ──
+  {s:"Photographie",q:"Qui est Henri Cartier-Bresson ?",a:"🇫🇷 Photographe français (1908-2004)\nPère du photojournalisme moderne\nCofondateur de l'agence Magnum (1947)\nConcept : 'l'instant décisif'\nOeuvre clé : Derrière la gare Saint-Lazare",img:"Henri Cartier-Bresson derriere gare Saint-Lazare",wiki:"Henri_Cartier-Bresson"},
+  {s:"Photographie",q:"Qui est Robert Capa ?",a:"🇭🇺🇺🇸 Photographe hongrois-américain (1913-1954)\nPhotographe de guerre légendaire\nCofondateur de Magnum\nOeuvre clé : Mort d'un soldat républicain (guerre d'Espagne)\nMort sur une mine en Indochine à 40 ans",img:"Robert Capa Falling Soldier",wiki:"Robert_Capa"},
+  {s:"Photographie",q:"Qui est Diane Arbus ?",a:"🇺🇸 Photographe américaine (1923-1971)\nPortraits de marginaux : nains, géants, travestis\nOeuvre clé : Identical Twins (1967)\nRegard sans jugement sur les 'freaks'\nA influencé toute la photo contemporaine",img:"Diane Arbus Identical Twins",wiki:"Diane_Arbus"},
+  {s:"Photographie",q:"Qui est Sebastião Salgado ?",a:"🇧🇷 Photographe brésilien (1944)\nEx-économiste devenu photographe humaniste\nN&B monumental : migrations, travail, nature\nOeuvre clé : Genesis (8 ans, 32 voyages)\nA replanté 2,5 millions d'arbres au Brésil",img:"Sebastiao Salgado Genesis",wiki:"Sebasti%C3%A3o_Salgado"},
+  {s:"Photographie",q:"Qui est Helmut Newton ?",a:"🇩🇪🇦🇺 Photographe germano-australien (1920-2004)\nNé à Berlin, fuit le nazisme\nPhotos de mode provocantes et érotiques\nOeuvre clé : Big Nudes (femmes puissantes en talons)\nA redéfini la photo de mode",img:"Helmut Newton Big Nudes",wiki:"Helmut_Newton"},
+  {s:"Photographie",q:"Qui est Robert Doisneau ?",a:"🇫🇷 Photographe français (1912-1994)\nPoète visuel de la vie parisienne\nOeuvre clé : Le Baiser de l'Hôtel de Ville (1950)\nPhoto la plus reproduite au monde (mise en scène)\nHumaniste, tendresse, humour",img:"Robert Doisneau Baiser Hotel de Ville",wiki:"Robert_Doisneau"},
+  {s:"Photographie",q:"Qui est Nan Goldin ?",a:"🇺🇸 Photographe américaine (1953)\nChronique intime de sa vie et ses proches\nOeuvre clé : The Ballad of Sexual Dependency (diaporama)\nDrogue, sexualité, violence domestique, sida\nActiviste contre la famille Sackler (opioides)",img:"Nan Goldin Ballad of Sexual Dependency",wiki:"Nan_Goldin"},
+  {s:"Photographie",q:"Qui est Andreas Gursky ?",a:"🇩🇪 Photographe allemand (1955)\nPhotos monumentales retouchées numériquement\nArchitecture, foules, globalisation\nOeuvre clé : Rhein II (vendue 4,3 M$, record photo)\nÉlève de Bernd et Hilla Becher",img:"Andreas Gursky Rhein II",wiki:"Andreas_Gursky"},
+  {s:"Photographie",q:"Qui est Man Ray ?",a:"🇺🇸 Artiste américain (1890-1976)\nPionnier de la photographie surréaliste\nInventeur du rayogramme (photo sans appareil)\nOeuvre clé : Le Violon d'Ingres (1924)\nA vécu à Paris, ami des surréalistes",img:"Man Ray Le Violon d'Ingres",wiki:"Man_Ray"},
+  {s:"Photographie",q:"Qui est Dorothea Lange ?",a:"🇺🇸 Photographe américaine (1895-1965)\nDocumentariste sociale\nOeuvre clé : Migrant Mother (1936)\nIcone de la Grande Dépression\nA documenté les camps d'internement japonais aux USA",img:"Dorothea Lange Migrant Mother",wiki:"Dorothea_Lange"},
+  {s:"Photographie",q:"Qui est Vivian Maier ?",a:"🇺🇸 Photographe américaine (1926-2009)\nNounou de métier, photographe secrète\n150 000 photos découvertes après sa mort\nOeuvre clé : autoportraits dans les reflets\nRedécouverte en 2007, reconnue posthume",img:"Vivian Maier street photography",wiki:"Vivian_Maier"},
+  {s:"Photographie",q:"Qui est Annie Leibovitz ?",a:"🇺🇸 Photographe américaine (1949)\nPortraitiste des célébrités (Rolling Stone, Vanity Fair)\nOeuvre clé : John Lennon nu avec Yoko Ono (1980)\nDernière photo de Lennon (5h avant sa mort)\nStyle théâtral, éclairage dramatique",img:"Annie Leibovitz John Lennon Yoko Ono",wiki:"Annie_Leibovitz"},
+  {s:"Photographie",q:"Qui est Richard Avedon ?",a:"🇺🇸 Photographe américain (1923-2004)\nA révolutionné la photo de mode et le portrait\nFonds blancs, expressions spontanées\nOeuvre clé : Dovima with Elephants (1955)\nPortraits de l'Ouest américain (In the American West)",img:"Richard Avedon Dovima with Elephants",wiki:"Richard_Avedon"},
+  {s:"Photographie",q:"Qui est Gregory Crewdson ?",a:"🇺🇸 Photographe américain (1962)\nMise en scène cinématographique de banlieues américaines\nÉquipes de 50+ personnes, éclairages hollywoodiens\nOeuvre clé : Beneath the Roses\nChaque photo = un tournage de film",img:"Gregory Crewdson Beneath the Roses",wiki:"Gregory_Crewdson"},
+  {s:"Photographie",q:"Qui est Zanele Muholi ?",a:"🇿🇦 Artiste visuel·le sud-africain·e (1972)\nActiviste, documente la communauté LGBTQ+ noire\nOeuvre clé : Somnyama Ngonyama (autoportraits)\nUtilise objets du quotidien comme accessoires\nGenre non-binaire, se définit comme 'activiste visuel·le'",img:"Zanele Muholi Somnyama Ngonyama",wiki:"Zanele_Muholi"},
+
+  // ── MOUVEMENTS ARTISTIQUES ──
+  {s:"Mouvements artistiques",q:"Qu'est-ce que l'Art naïf ?",a:"Art d'autodidactes sans formation académique\nPerspective aplatie, couleurs vives\nFigure clé : le Douanier Rousseau\nAussi : Séraphine de Senlis\nPas 'primitif' : vision non filtrée",img:"Douanier Rousseau jungle",wiki:"Art_na%C3%AFf"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que le Pop Art ?",a:"Années 1950-60, culture de masse\nPubs, BD, célébrités, consommation\nWarhol (Marilyn), Lichtenstein (BD), Oldenburg\nBrouille art et culture populaire\nWarhol : 'Le pop, c'est tout'",img:"Andy Warhol Marilyn Monroe",wiki:"Pop_art"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que l'Arte Povera ?",a:"'Art pauvre', Italie, 1967\nMatériaux quotidiens : terre, bois, néon\nRejette le commerce de l'art\nMerz (igloos), Kounellis (chevaux en galerie)\nRéponse au boom économique italien",img:"Mario Merz igloo Arte Povera",wiki:"Arte_povera"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que Fluxus ?",a:"Années 1960, fondé par George Maciunas\nAnti-art ludique et anti-commercial\nYoko Ono, Nam June Paik, Ben Vautier\nInfluencé par Dada et John Cage\n'L'art est la vie, la vie est l'art'",img:"Nam June Paik TV Fluxus",wiki:"Fluxus"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que l'Art conceptuel ?",a:"Années 1960-70 — l'idée prime sur l'objet\nL'oeuvre peut être un texte ou une instruction\nKosuth : One and Three Chairs\nSol LeWitt, Lawrence Weiner, On Kawara\nA redéfini ce qu'est une oeuvre d'art",img:"Joseph Kosuth One and Three Chairs",wiki:"Conceptual_art"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que le Minimalisme ?",a:"New York, années 1960\nFormes géométriques, matériaux industriels\nJudd (boîtes), Flavin (néons), Carl Andre\nZéro expression personnelle\nStella : 'What you see is what you see'",img:"Donald Judd boxes Marfa",wiki:"Minimalism"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que le Land Art ?",a:"Fin des années 1960, USA\nL'art sort des galeries → dans le paysage\nSmithson : Spiral Jetty (Grand Lac Salé)\nDe Maria, Turrell (Roden Crater)\nCritique la marchandisation de l'art",img:"Robert Smithson Spiral Jetty",wiki:"Land_art"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que le Surréalisme ?",a:"1924, Manifeste d'André Breton\nInconscient, rêve, irrationnel (influence Freud)\nDalí, Magritte, Ernst, Miró, Kahlo\nTechniques : écriture automatique, cadavre exquis\nBreton : 'Le merveilleux est toujours beau'",img:"Salvador Dali Persistence of Memory",wiki:"Surrealism"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que l'Expressionnisme abstrait ?",a:"New York, années 1940 — 1er mouvement américain\nAction Painting : Pollock (dripping)\nColor Field : Rothko (rectangles de couleur)\nAussi : de Kooning, Newman\nInstrumentalisé par la CIA (Guerre froide)",img:"Jackson Pollock drip painting",wiki:"Abstract_expressionism"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que l'Art brut ?",a:"Concept de Jean Dubuffet (1945)\nArt d'outsiders sans formation\nInternés, autodidactes, marginaux\nWölfli, Darger (manuscrit secret de 15 000 pages)\nEn anglais : Outsider Art — Collection à Lausanne",img:"Adolf Wolfli art brut",wiki:"Outsider_art"},
+
+  // ── 150 ARTISTES DU MONDE ──
+
+  // Amérique du Nord
+  {s:"Art contemporain",q:"Qui est Andy Warhol ?",a:"🇺🇸 Artiste américain (1928-1987)\nPape du Pop Art, ex-illustrateur publicitaire\nOeuvre clé : Marilyn Diptych (sérigraphie)\nThe Factory : studio-labo à NYC\n'À l'avenir, chacun sera célèbre 15 minutes'",img:"Andy Warhol Marilyn Diptych",wiki:"Andy_Warhol"},
+  {s:"Art contemporain",q:"Qui est Jackson Pollock ?",a:"🇺🇸 Peintre américain (1912-1956)\nInventeur du dripping (peinture projetée)\nOeuvre clé : Number 1A, 1948\nAction Painting — peint au sol, en mouvement\nMort dans un accident de voiture à 44 ans",img:"Jackson Pollock Number 1A",wiki:"Jackson_Pollock"},
+  {s:"Art contemporain",q:"Qui est Mark Rothko ?",a:"🇺🇸🇱🇻 Peintre américain d'origine lettonne (1903-1970)\nGrands rectangles de couleur vibrante\nOeuvre clé : Orange, Red, Yellow (2012 : 86,9 M$)\nColor Field Painting — émotion contemplative\nChapelle Rothko à Houston",img:"Mark Rothko Orange Red Yellow",wiki:"Mark_Rothko"},
+  {s:"Art contemporain",q:"Qui est Willem de Kooning ?",a:"🇳🇱🇺🇸 Peintre néerlando-américain (1904-1997)\nExpressionnisme abstrait, figures féminines violentes\nOeuvre clé : Woman I (1950-52)\nAlterne abstraction et figuration\nRecord : Interchange vendu 300 M$ (2015, privé)",img:"Willem de Kooning Woman I",wiki:"Willem_de_Kooning"},
+  {s:"Art contemporain",q:"Qui est Roy Lichtenstein ?",a:"🇺🇸 Peintre américain (1923-1997)\nPop Art — imite le style des bandes dessinées\nOeuvre clé : Whaam! (1963)\nPoints Ben-Day, couleurs primaires, bulles\nA transformé la BD en grand art",img:"Roy Lichtenstein Whaam",wiki:"Roy_Lichtenstein"},
+  {s:"Art contemporain",q:"Qui est Edward Hopper ?",a:"🇺🇸 Peintre américain (1882-1967)\nScènes de solitude urbaine américaine\nOeuvre clé : Nighthawks (1942)\nLumière cinématographique, personnages isolés\nA influencé le cinéma (Hitchcock, Wenders)",img:"Edward Hopper Nighthawks",wiki:"Edward_Hopper"},
+  {s:"Art contemporain",q:"Qui est Georgia O'Keeffe ?",a:"🇺🇸 Peintre américaine (1887-1986)\nFleurs géantes, os, paysages du Nouveau-Mexique\nOeuvre clé : Jimson Weed/White Flower No. 1\nRecord femme artiste : 44,4 M$ (2014)\nPionnière de l'art moderne américain",img:"Georgia O'Keeffe Jimson Weed flower",wiki:"Georgia_O%27Keeffe"},
+  {s:"Art contemporain",q:"Qui est Robert Rauschenberg ?",a:"🇺🇸 Artiste américain (1925-2008)\nPrécurseur du Pop Art, 'Combines' (peinture+objets)\nOeuvre clé : Monogram (chèvre empaillée + pneu)\nA effacé un dessin de De Kooning (1953)\nPont entre Expressionnisme abstrait et Pop",img:"Rauschenberg Monogram goat",wiki:"Robert_Rauschenberg"},
+  {s:"Art contemporain",q:"Qui est Richard Serra ?",a:"🇺🇸 Sculpteur américain (1938-2024)\nGigantesques plaques d'acier Corten courbées\nOeuvre clé : Tilted Arc (retirée de NYC, controverse)\nThe Matter of Time (Guggenheim Bilbao)\nPoids : ses œuvres pèsent des centaines de tonnes",img:"Richard Serra The Matter of Time Bilbao",wiki:"Richard_Serra"},
+  {s:"Art contemporain",q:"Qui est Bruce Nauman ?",a:"🇺🇸 Artiste américain (1941)\nVidéo, néon, performance, sculpture\nOeuvre clé : The True Artist Helps the World (néon spiral)\nExplore le langage et le corps\nLion d'Or Venise 2009",img:"Bruce Nauman neon true artist",wiki:"Bruce_Nauman"},
+  {s:"Art contemporain",q:"Qui est Matthew Barney ?",a:"🇺🇸 Artiste américain (1967)\nFilms-sculptures monumentaux\nOeuvre clé : Cremaster Cycle (5 films, 1994-2002)\nMythologie personnelle, prothèses, vaseline\nEx-compagnon de Björk",img:"Matthew Barney Cremaster Cycle",wiki:"Matthew_Barney"},
+  {s:"Art contemporain",q:"Qui est Jenny Holzer ?",a:"🇺🇸 Artiste américaine (1950)\nTextes lumineux projetés sur bâtiments\nOeuvre clé : Truisms (aphorismes sur panneaux LED)\n'Abuse of power comes as no surprise'\nArt conceptuel engagé politiquement",img:"Jenny Holzer Truisms LED",wiki:"Jenny_Holzer"},
+  {s:"Art contemporain",q:"Qui est Barbara Kruger ?",a:"🇺🇸 Artiste américaine (1945)\nPhotos N&B avec textes rouge et blanc\nOeuvre clé : Your Body is a Battleground (1989)\nCritique consumérisme et pouvoir\nStyle copié par Supreme (marque streetwear)",img:"Barbara Kruger Your Body is a Battleground",wiki:"Barbara_Kruger"},
+  {s:"Art contemporain",q:"Qui est Jean Dubuffet ?",a:"🇫🇷 Artiste français (1901-1985)\nInventeur du concept d'Art Brut (1945)\nOeuvre clé : L'Hourloupe (cycle de peintures/sculptures)\nRejetait l'art 'cultivé' au profit de l'art des fous\nCollection de l'Art Brut à Lausanne",img:"Jean Dubuffet Hourloupe",wiki:"Jean_Dubuffet"},
+
+  // Amérique Latine
+  {s:"Art contemporain",q:"Qui est Frida Kahlo ?",a:"🇲🇽 Peintre mexicaine (1907-1954)\nAutoportraits intenses, douleur, identité\nOeuvre clé : Les Deux Fridas (1939)\nAccident de bus à 18 ans → douleurs chroniques\nÉpouse de Diego Rivera, icône féministe",img:"Frida Kahlo The Two Fridas",wiki:"Frida_Kahlo"},
+  {s:"Art contemporain",q:"Qui est Diego Rivera ?",a:"🇲🇽 Peintre mexicain (1886-1957)\nMuraliste — fresques monumentales politiques\nOeuvre clé : Man at the Crossroads (Rockefeller Center, détruit)\nHistoire du Mexique, lutte des classes\nÉpoux de Frida Kahlo",img:"Diego Rivera mural Mexico",wiki:"Diego_Rivera"},
+  {s:"Art contemporain",q:"Qui est Lygia Clark ?",a:"🇧🇷 Artiste brésilienne (1920-1988)\nArt participatif — le spectateur touche l'œuvre\nOeuvre clé : Bichos (sculptures articulées, 1960)\nNéo-concrétisme brésilien\nArt comme thérapie sensorielle",img:"Lygia Clark Bichos sculpture",wiki:"Lygia_Clark"},
+  {s:"Art contemporain",q:"Qui est Hélio Oiticica ?",a:"🇧🇷 Artiste brésilien (1937-1980)\nInstallations participatives, couleur, corps\nOeuvre clé : Tropicália (1967, installation immersive)\nParangolés : capes portées en dansant\nA donné son nom au mouvement musical Tropicália",img:"Helio Oiticica Tropicalia",wiki:"H%C3%A9lio_Oiticica"},
+  {s:"Art contemporain",q:"Qui est Fernando Botero ?",a:"🇨🇴 Peintre/sculpteur colombien (1932-2023)\nFigures rondes et volumineuses ('Boterismo')\nOeuvre clé : sculptures de bronze dans les villes du monde\nA aussi peint les tortures d'Abu Ghraib\nArtiste latino-américain le plus coté",img:"Fernando Botero sculpture bronze",wiki:"Fernando_Botero"},
+  {s:"Art contemporain",q:"Qui est Doris Salcedo ?",a:"🇨🇴 Sculptrice colombienne (1958)\nMémoire de la violence en Colombie\nOeuvre clé : Shibboleth (fissure au sol, Tate Modern 2007)\nChaises, meubles, béton — traces d'absence\nArt politique et poétique",img:"Doris Salcedo Shibboleth Tate",wiki:"Doris_Salcedo"},
+  {s:"Art contemporain",q:"Qui est Gabriel Orozco ?",a:"🇲🇽 Artiste mexicain (1962)\nSculpture, photo, dessin — poésie du quotidien\nOeuvre clé : La DS (Citroën coupée en 3 et recollée)\nOranges sur étal, boîte de chaussures vide au MoMA\nTransforme les objets banals",img:"Gabriel Orozco La DS Citroen",wiki:"Gabriel_Orozco"},
+  {s:"Art contemporain",q:"Qui est Ernesto Neto ?",a:"🇧🇷 Artiste brésilien (1964)\nSculptures organiques en tissu extensible\nOeuvre clé : installations pénétrables avec épices\nLe spectateur entre dans l'œuvre\nArt sensoriel : toucher, odeur, corps",img:"Ernesto Neto installation sculpture",wiki:"Ernesto_Neto"},
+
+  // Europe — France
+  {s:"Art contemporain",q:"Qui est Marcel Duchamp ?",a:"🇫🇷 Artiste français (1887-1968)\nInventeur du ready-made (objet = art)\nOeuvre clé : Fountain (urinoir signé R.Mutt, 1917)\nA révolutionné la définition de l'art\nJoueur d'échecs obsessionnel",img:"Marcel Duchamp Fountain readymade",wiki:"Marcel_Duchamp"},
+  {s:"Art contemporain",q:"Qui est Yves Klein ?",a:"🇫🇷 Artiste français (1928-1962)\nInventeur du bleu IKB (International Klein Blue)\nOeuvre clé : Anthropométries (corps nus = pinceaux)\nLe Saut dans le vide (photo truquée, 1960)\nMort à 34 ans — Nouveau Réalisme",img:"Yves Klein Anthropometries blue",wiki:"Yves_Klein"},
+  {s:"Art contemporain",q:"Qui est Pierre Soulages ?",a:"🇫🇷 Peintre français (1919-2022)\nMaître du noir — 'Outrenoir' (le noir qui reflète la lumière)\nOeuvre clé : vitraux de l'abbatiale de Conques\nPeintre français le plus cher aux enchères\nA peint jusqu'à 102 ans",img:"Pierre Soulages Outrenoir painting",wiki:"Pierre_Soulages"},
+  {s:"Art contemporain",q:"Qui est César ?",a:"🇫🇷 Sculpteur français (1921-1998)\nCompressions de voitures, Expansions de polyuréthane\nOeuvre clé : Le Pouce (sculpture géante, La Défense)\nA créé le trophée des Césars du cinéma\nNouveau Réalisme",img:"Cesar Le Pouce sculpture",wiki:"C%C3%A9sar_(sculpteur)"},
+  {s:"Art contemporain",q:"Qui est Annette Messager ?",a:"🇫🇷 Artiste française (1943)\nPeluches, tissus, photos — tendresse et cruauté\nOeuvre clé : Casino (Lion d'Or Venise 2005)\nPionnière de l'art féministe en France\nQuestionne le féminin, le corps, l'enfance",img:"Annette Messager Casino Venice",wiki:"Annette_Messager"},
+  {s:"Art contemporain",q:"Qui est Philippe Parreno ?",a:"🇫🇷🇩🇿 Artiste franco-algérien (1964)\nInstallations immersives, film, son, lumière\nOeuvre clé : Anywhere, Anywhere Out of the World (Palais de Tokyo)\nCollabore avec Tino Sehgal, Rirkrit Tiravanija\nRepense l'exposition comme expérience",img:"Philippe Parreno installation Palais Tokyo",wiki:"Philippe_Parreno"},
+
+  // Europe — Royaume-Uni
+  {s:"Art contemporain",q:"Qui est Francis Bacon ?",a:"🇬🇧🇮🇪 Peintre britannique d'origine irlandaise (1909-1992)\nFigures déformées, violence, cris\nOeuvre clé : Three Studies of Lucian Freud (142,4 M$)\nInspiration : Vélasquez, photo, radiographies\nPeignait dans un chaos total (atelier légendaire)",img:"Francis Bacon Three Studies Lucian Freud",wiki:"Francis_Bacon_(artiste)"},
+  {s:"Art contemporain",q:"Qui est Lucian Freud ?",a:"🇬🇧🇩🇪 Peintre britannique d'origine allemande (1922-2011)\nPetit-fils de Sigmund Freud\nOeuvre clé : Benefits Supervisor Sleeping (33,6 M$)\nNus réalistes, chair épaisse, regard cru\nConsidéré comme le plus grand peintre figuratif du XXe",img:"Lucian Freud Benefits Supervisor Sleeping",wiki:"Lucian_Freud"},
+  {s:"Art contemporain",q:"Qui est Bridget Riley ?",a:"🇬🇧 Peintre britannique (1931)\nOp Art — illusions optiques par motifs géométriques\nOeuvre clé : Movement in Squares (1961)\nNoir/blanc puis couleurs vibrantes\nPionnière de l'art optique",img:"Bridget Riley Movement in Squares",wiki:"Bridget_Riley"},
+  {s:"Art contemporain",q:"Qui est Chris Ofili ?",a:"🇬🇧 Peintre britannique (1968), YBA\nPeintures avec bouse d'éléphant et paillettes\nOeuvre clé : The Holy Virgin Mary (controverse à Brooklyn)\nTurner Prize 1998\nVit à Trinidad depuis 2005",img:"Chris Ofili The Holy Virgin Mary",wiki:"Chris_Ofili"},
+  {s:"Art contemporain",q:"Qui est Rachel Whiteread ?",a:"🇬🇧 Sculptrice britannique (1963)\nMoulages en plâtre/résine d'espaces négatifs\nOeuvre clé : House (moulage d'une maison, démoli)\nTurner Prize 1993 — 1re femme à le gagner\nMémorial de la Shoah à Vienne",img:"Rachel Whiteread House sculpture",wiki:"Rachel_Whiteread"},
+  {s:"Art contemporain",q:"Qui est Gilbert & George ?",a:"🇬🇧🇮🇹 Duo italo-britannique (1943/1942)\nSe présentent comme 'sculptures vivantes'\nOeuvre clé : grandes compositions photo quadrillées\nToujours en costume, inséparables depuis 1967\nProvocateurs : sexe, religion, excréments",img:"Gilbert and George art",wiki:"Gilbert_et_George"},
+
+  // Europe — Allemagne/Autriche/Suisse
+  {s:"Art contemporain",q:"Qui est Joseph Beuys ?",a:"🇩🇪 Artiste allemand (1921-1986)\nPerformance, sculpture, politique\nOeuvre clé : I Like America and America Likes Me (coyote)\n'Chaque homme est un artiste'\n7000 chênes plantés à Kassel (Documenta)",img:"Joseph Beuys I Like America coyote",wiki:"Joseph_Beuys"},
+  {s:"Art contemporain",q:"Qui est Georg Baselitz ?",a:"🇩🇪 Peintre allemand (1938)\nPeint ses sujets à l'envers depuis 1969\nOeuvre clé : Die Mädchen von Olmo (figures inversées)\nNéo-expressionnisme — provocation et geste brut\nSculptures à la tronçonneuse",img:"Georg Baselitz upside down painting",wiki:"Georg_Baselitz"},
+  {s:"Art contemporain",q:"Qui est Sigmar Polke ?",a:"🇩🇪 Peintre allemand (1941-2010)\nRéalisme capitaliste (avec Richter)\nOeuvre clé : trames de points, matériaux chimiques\nPeintures qui changent selon la météo\nHumour et alchimie visuelle",img:"Sigmar Polke painting",wiki:"Sigmar_Polke"},
+  {s:"Art contemporain",q:"Qui est Neo Rauch ?",a:"🇩🇪 Peintre allemand (1960)\nNouvelle École de Leipzig\nOeuvre clé : peintures figuratives surréalistes\nMêle réalisme socialiste et onirisme\nNé en RDA, formé à Leipzig",img:"Neo Rauch painting Leipzig",wiki:"Neo_Rauch"},
+  {s:"Art contemporain",q:"Qui est Thomas Hirschhorn ?",a:"🇨🇭 Artiste suisse (1957)\nInstallations chaotiques avec scotch, carton, alu\nOeuvre clé : Gramsci Monument (Bronx, 2013)\nVit à Paris, engagé politiquement\nRéférence à la philosophie (Deleuze, Gramsci)",img:"Thomas Hirschhorn Gramsci Monument",wiki:"Thomas_Hirschhorn"},
+  {s:"Art contemporain",q:"Qui est Pipilotti Rist ?",a:"🇨🇭 Artiste suisse (1962)\nVidéo immersive, couleurs saturées, sensualité\nOeuvre clé : Ever Is Over All (femme brise des vitres avec fleur)\nInstallations au MoMA, Hauser & Wirth\nPoésie visuelle et féminisme joyeux",img:"Pipilotti Rist Ever Is Over All",wiki:"Pipilotti_Rist"},
+
+  // Europe — Italie/Espagne/Portugal
+  {s:"Art contemporain",q:"Qui est Michelangelo Pistoletto ?",a:"🇮🇹 Artiste italien (1933)\nArte Povera — miroirs et participation\nOeuvre clé : Venus of the Rags (Vénus devant tas de chiffons)\nTableaux-miroirs : le spectateur dans l'œuvre\nFondateur de Cittadellarte (utopie artistique)",img:"Pistoletto Venus of the Rags",wiki:"Michelangelo_Pistoletto"},
+  {s:"Art contemporain",q:"Qui est Giuseppe Penone ?",a:"🇮🇹 Sculpteur italien (1947)\nArte Povera — dialogue art/nature\nOeuvre clé : arbres sculptés retrouvant leur forme originelle\nEmpreintes de doigts géantes, souffles en bronze\nInstallation permanente à Versailles",img:"Giuseppe Penone tree sculpture",wiki:"Giuseppe_Penone"},
+  {s:"Art contemporain",q:"Qui est Antoni Tàpies ?",a:"🇪🇸 Peintre espagnol (1923-2012)\nArt informel — matière brute (sable, terre, vernis)\nOeuvre clé : grandes toiles avec croix et graffitis\nInfluencé par la philosophie zen\nFondation Tàpies à Barcelone",img:"Antoni Tapies painting cross",wiki:"Antoni_T%C3%A0pies"},
+  {s:"Art contemporain",q:"Qui est Miquel Barceló ?",a:"🇪🇸 Peintre espagnol (1957), né à Majorque\nPeinture-matière : pigments, terre, cendres\nOeuvre clé : coupole de la salle des Droits de l'homme (ONU Genève)\nVit entre Majorque, Paris et Mali\nUn des artistes espagnols les plus cotés",img:"Miquel Barcelo ONU Geneva dome",wiki:"Miquel_Barcel%C3%B3"},
+  {s:"Art contemporain",q:"Qui est Paula Rego ?",a:"🇵🇹 Peintre portugaise (1935-2022)\nFiguration narrative — contes, pouvoir, féminité\nOeuvre clé : The Dance (1988)\nA dénoncé l'interdiction de l'avortement au Portugal\nVivait à Londres, liée à la Slade School",img:"Paula Rego The Dance painting",wiki:"Paula_Rego"},
+  {s:"Art contemporain",q:"Qui est Joana Vasconcelos ?",a:"🇵🇹 Artiste portugaise (1971)\nSculptures monumentales en objets du quotidien\nOeuvre clé : Marilyn (escarpins géants en casseroles)\nExposée à Versailles (2012)\nIdentité, féminisme, culture populaire",img:"Joana Vasconcelos Marilyn shoes",wiki:"Joana_Vasconcelos"},
+
+  // Europe — Scandinavie/Pays-Bas/Pologne
+  {s:"Art contemporain",q:"Qui est Per Kirkeby ?",a:"🇩🇰 Peintre danois (1938-2018)\nPaysages abstraits, couches de couleurs denses\nOeuvre clé : sculptures en brique\nAussi géologue de formation\nUn des plus grands peintres scandinaves",img:"Per Kirkeby painting",wiki:"Per_Kirkeby"},
+  {s:"Art contemporain",q:"Qui est Marlene Dumas ?",a:"🇿🇦🇳🇱 Peintre sud-africaine basée aux Pays-Bas (1953)\nPortraits à l'aquarelle et à l'huile — émotion brute\nOeuvre clé : The Painter (1994)\nCorps, désir, mort, politique raciale\nArtiste femme vivante la plus chère",img:"Marlene Dumas The Painter",wiki:"Marlene_Dumas"},
+  {s:"Art contemporain",q:"Qui est Magdalena Abakanowicz ?",a:"🇵🇱 Sculptrice polonaise (1930-2017)\nFigures sans tête en toile de jute et résine\nOeuvre clé : Crowds (foules de dos sans visage)\nArt textile monumental\nSurvivante de la Seconde Guerre mondiale",img:"Magdalena Abakanowicz Crowds sculpture",wiki:"Magdalena_Abakanowicz"},
+
+  // Europe — Russie/Europe de l'Est
+  {s:"Art contemporain",q:"Qui est Ilya Kabakov ?",a:"🇷🇺🇺🇸 Artiste russe-américain (1933-2023)\nInstallations immersives sur la vie soviétique\nOeuvre clé : The Man Who Flew into Space from his Apartment\nNostalgie et absurdité du quotidien soviétique\nFigure majeure de l'art post-soviétique",img:"Ilya Kabakov Man Who Flew Into Space",wiki:"Ilya_Kabakov"},
+  {s:"Art contemporain",q:"Qui est Roman Ondák ?",a:"🇸🇰 Artiste slovaque (1966)\nPerformances et interventions discrètes\nOeuvre clé : Measuring the Universe (visiteurs tracent leur taille)\nBiennale de Venise (pavillon tchèque/slovaque)\nArt minimal et participatif",img:"Roman Ondak Measuring the Universe",wiki:"Roman_Ond%C3%A1k"},
+
+  // Afrique
+  {s:"Art contemporain",q:"Qui est El Anatsui ?",a:"🇬🇭 Sculpteur ghanéen (1944)\nTapisseries géantes en capsules de bouteilles recyclées\nOeuvre clé : installations sur façades (Biennale de Venise)\nAluminium tissé comme du tissu kente\nVit au Nigeria, exposé au monde entier",img:"El Anatsui bottle cap tapestry",wiki:"El_Anatsui"},
+  {s:"Art contemporain",q:"Qui est William Kentridge ?",a:"🇿🇦 Artiste sud-africain (1955)\nDessin animé au fusain (dessine/efface/filme)\nOeuvre clé : Felix in Exile (apartheid)\nThéâtre, opéra, animation\nMémoire, politique, effacement",img:"William Kentridge drawing animation",wiki:"William_Kentridge"},
+  {s:"Art contemporain",q:"Qui est Ibrahim El-Salahi ?",a:"🇸🇩 Artiste soudanais (1930)\nPionnier du modernisme africain\nOeuvre clé : Reborn Sounds of Childhood Dreams\nFusion calligraphie arabe + art africain + modernisme\nA passé 6 mois en prison au Soudan",img:"Ibrahim El-Salahi painting",wiki:"Ibrahim_El-Salahi"},
+  {s:"Art contemporain",q:"Qui est Chéri Samba ?",a:"🇨🇩 Peintre congolais (1956)\nTableaux figuratifs colorés et satiriques\nOeuvre clé : J'aime la couleur\nSe représente dans ses tableaux\nCritique politique et sociale avec humour",img:"Cheri Samba painting Congo",wiki:"Ch%C3%A9ri_Samba"},
+  {s:"Art contemporain",q:"Qui est Njideka Akunyili Crosby ?",a:"🇳🇬 Peintre nigériane (1983)\nCollages et peintures mêlant vie nigériane et américaine\nOeuvre clé : Bush Babies (intérieurs domestiques)\nTransferts photo + peinture acrylique\nRecord : 3,4 M$ — star montante",img:"Njideka Akunyili Crosby painting",wiki:"Njideka_Akunyili_Crosby"},
+  {s:"Art contemporain",q:"Qui est Yinka Shonibare ?",a:"🇬🇧🇳🇬 Artiste britannico-nigérian (1962)\nMannequins sans tête en tissu wax africain\nOeuvre clé : Nelson's Ship in a Bottle (Trafalgar Square)\nQuestionne colonialisme et identité post-coloniale\nMBE — travaille en fauteuil roulant",img:"Yinka Shonibare Nelson Ship Bottle",wiki:"Yinka_Shonibare"},
+  {s:"Art contemporain",q:"Qui est Amoako Boafo ?",a:"🇬🇭 Peintre ghanéen (1984)\nPortraits de personnes noires peints aux doigts\nOeuvre clé : portraits sur fonds colorés\nStar fulgurante du marché de l'art\nBasé à Vienne et Accra",img:"Amoako Boafo finger painting portrait",wiki:"Amoako_Boafo"},
+
+  // Moyen-Orient
+  {s:"Art contemporain",q:"Qui est Shirin Neshat ?",a:"🇮🇷 Artiste iranienne (1957)\nPhotos et vidéos N&B sur la femme en Islam\nOeuvre clé : Women of Allah (calligraphie sur corps)\nLion d'Or Venise 2009 (film)\nVit en exil aux USA depuis la révolution iranienne",img:"Shirin Neshat Women of Allah",wiki:"Shirin_Neshat"},
+  {s:"Art contemporain",q:"Qui est Mona Hatoum ?",a:"🇱🇧🇬🇧 Artiste libano-britannique (1952)\nInstallations et objets du quotidien menaçants\nOeuvre clé : Hot Spot (globe terrestre en néon rouge)\nRâpe à fromage géante, carte du monde en savon\nExil, danger, corps",img:"Mona Hatoum Hot Spot globe",wiki:"Mona_Hatoum"},
+  {s:"Art contemporain",q:"Qui est Kader Attia ?",a:"🇫🇷🇩🇿 Artiste franco-algérien (1970)\nThèmes : réparation, colonialisme, blessures\nOeuvre clé : The Repair (masques africains + gueules cassées)\nDocumenta 13, prix Marcel Duchamp 2016\nConcept de 'réparation' comme forme",img:"Kader Attia The Repair",wiki:"Kader_Attia"},
+  {s:"Art contemporain",q:"Qui est Wael Shawky ?",a:"🇪🇬 Artiste égyptien (1971)\nFilms avec marionnettes racontant les Croisades\nOeuvre clé : Cabaret Crusades (trilogie)\nMarionnettes en verre de Murano\nRéécrit l'histoire depuis le regard arabe",img:"Wael Shawky Cabaret Crusades",wiki:"Wael_Shawky"},
+
+  // Asie — Chine
+  {s:"Art contemporain",q:"Qui est Cai Guo-Qiang ?",a:"🇨🇳 Artiste chinois (1957)\nExplosions et feux d'artifice comme art\nOeuvre clé : Sky Ladder (échelle de feu de 500 m)\nCérémonies d'ouverture JO Pékin 2008\nUtilise la poudre à canon sur toile",img:"Cai Guo-Qiang Sky Ladder fireworks",wiki:"Cai_Guo-Qiang"},
+  {s:"Art contemporain",q:"Qui est Zhang Xiaogang ?",a:"🇨🇳 Peintre chinois (1958)\nPortraits de famille à l'esthétique maoïste\nOeuvre clé : Bloodline : Big Family (visages identiques)\nMémoire collective et trauma de la Révolution culturelle\nUn des artistes chinois les plus chers",img:"Zhang Xiaogang Bloodline Big Family",wiki:"Zhang_Xiaogang"},
+  {s:"Art contemporain",q:"Qui est Liu Wei ?",a:"🇨🇳 Artiste chinois (1972)\nSculptures architecturales en matériaux divers\nOeuvre clé : structures monumentales en cuir de vache\nVilles, urbanisation, chaos\nFigure de la nouvelle scène chinoise",img:"Liu Wei sculpture architecture",wiki:"Liu_Wei_(artist%2C_born_1972)"},
+  {s:"Art contemporain",q:"Qui est Xu Bing ?",a:"🇨🇳 Artiste chinois (1955)\nLangue, écriture, traduction\nOeuvre clé : Book from the Sky (4000 caractères inventés)\nPhoenix : oiseaux géants en débris de chantier\nVice-président de l'Académie des Beaux-Arts de Pékin",img:"Xu Bing Book from the Sky",wiki:"Xu_Bing"},
+
+  // Asie — Japon/Corée
+  {s:"Art contemporain",q:"Qui est Yoshitomo Nara ?",a:"🇯🇵 Peintre/sculpteur japonais (1959)\nEnfants aux yeux méchants, style cartoon punk\nOeuvre clé : Knife Behind Back\nInfluencé par le punk rock et la solitude\nRecord : 25 M$ (2019)",img:"Yoshitomo Nara Knife Behind Back",wiki:"Yoshitomo_Nara"},
+  {s:"Art contemporain",q:"Qui est Tadao Ando ?",a:"🇯🇵 Architecte japonais (1941)\nAutodidacte, ex-boxeur professionnel\nOeuvre clé : Church of the Light (Osaka, 1989)\nBéton brut + lumière naturelle\nPrix Pritzker 1995 — minimalisme spirituel",img:"Tadao Ando Church of the Light",wiki:"Tadao_Ando"},
+  {s:"Art contemporain",q:"Qui est Lee Ufan ?",a:"🇰🇷 Artiste coréen (1936)\nMouvement Mono-ha ('école des choses')\nOeuvre clé : Relatum (pierre + plaque d'acier)\nDialogue entre nature et industrie\nMusée Lee Ufan à Naoshima (Tadao Ando)",img:"Lee Ufan Relatum sculpture",wiki:"Lee_Ufan"},
+  {s:"Art contemporain",q:"Qui est Do Ho Suh ?",a:"🇰🇷 Artiste coréen (1962)\nRépliques translucides de ses appartements en tissu\nOeuvre clé : Seoul Home (maison coréenne suspendue)\nDéplacement, mémoire, identité\nPliables et transportables comme des valises",img:"Do Ho Suh fabric house installation",wiki:"Do_Ho_Suh"},
+  {s:"Art contemporain",q:"Qui est Nam June Paik ?",a:"🇰🇷🇺🇸 Artiste coréo-américain (1932-2006)\nPère de l'art vidéo\nOeuvre clé : TV Buddha (Bouddha face à sa propre image)\nRobots en vieux téléviseurs\nFluxus, ami de John Cage",img:"Nam June Paik TV Buddha",wiki:"Nam_June_Paik"},
+
+  // Asie — Inde/Asie du Sud-Est
+  {s:"Art contemporain",q:"Qui est Anish Kapoor ?",a:"🇬🇧🇮🇳 Sculpteur britannico-indien (1954)\nFormes concaves, miroirs, vide, pigments\nOeuvre clé : Cloud Gate ('The Bean', Chicago)\nA acheté les droits exclusifs du Vantablack (noir absolu)\nTurner Prize 1991",img:"Anish Kapoor Cloud Gate Chicago",wiki:"Anish_Kapoor"},
+  {s:"Art contemporain",q:"Qui est Subodh Gupta ?",a:"🇮🇳 Artiste indien (1964)\nSculptures en ustensiles de cuisine en inox\nOeuvre clé : Very Hungry God (crâne géant en casseroles)\nLe 'Damien Hirst indien'\nDialogue tradition rurale / modernité",img:"Subodh Gupta Very Hungry God skull",wiki:"Subodh_Gupta"},
+  {s:"Art contemporain",q:"Qui est Rirkrit Tiravanija ?",a:"🇹🇭🇦🇷 Artiste thaïlando-argentin (1961)\nArt relationnel — cuisine du pad thaï en galerie\nOeuvre clé : Untitled (Free) — repas gratuits\n'L'art est ce qui rend la vie plus intéressante que l'art'\nVit entre NYC, Berlin et Chiang Mai",img:"Rirkrit Tiravanija cooking gallery",wiki:"Rirkrit_Tiravanija"},
+
+  // Océanie
+  {s:"Art contemporain",q:"Qui est Patricia Piccinini ?",a:"🇦🇺 Sculptrice australienne (1965)\nCréatures hyperréalistes mi-humaines mi-animales\nOeuvre clé : The Young Family (mère mutante + bébés)\nBiotechnologie, empathie, posthumain\nSilicone, fibre de verre, cheveux humains",img:"Patricia Piccinini The Young Family sculpture",wiki:"Patricia_Piccinini"},
+
+  // ── PHOTOGRAPHIE (suite) ──
+  {s:"Photographie",q:"Qui est Robert Frank ?",a:"🇨🇭🇺🇸 Photographe suisso-américain (1924-2019)\nA révolutionné la photo documentaire\nOeuvre clé : The Americans (1958, livre culte)\n83 photos d'un road trip à travers les USA\nRegard brut, anti-héroïque sur l'Amérique",img:"Robert Frank The Americans photograph",wiki:"Robert_Frank"},
+  {s:"Photographie",q:"Qui est William Eggleston ?",a:"🇺🇸 Photographe américain (1939)\nPionnier de la photographie couleur artistique\nOeuvre clé : The Red Ceiling (1973)\nA légitimé la couleur au MoMA (expo 1976)\nBeauté dans le banal du Sud américain",img:"William Eggleston Red Ceiling",wiki:"William_Eggleston"},
+  {s:"Photographie",q:"Qui est Daido Moriyama ?",a:"🇯🇵 Photographe japonais (1938)\nN&B granuleux, flou, contrasté — style 'are-bure-boke'\nOeuvre clé : Stray Dog (1971)\nTokyo nocturne, énergie brute\nProvoke magazine — photographie rebelle",img:"Daido Moriyama Stray Dog",wiki:"Daido_Moriyama"},
+  {s:"Photographie",q:"Qui est Bernd et Hilla Becher ?",a:"🇩🇪 Couple allemand (Bernd 1931-2007, Hilla 1934-2015)\nTypologies : photos systématiques de structures industrielles\nOeuvre clé : châteaux d'eau, hauts-fourneaux en grilles\nFondateurs de l'École de Düsseldorf\nProfesseurs de Gursky, Struth, Ruff",img:"Bernd Hilla Becher water towers typology",wiki:"Bernd_et_Hilla_Becher"},
+  {s:"Photographie",q:"Qui est Thomas Struth ?",a:"🇩🇪 Photographe allemand (1954)\nPhotos grand format : musées, rues, familles\nOeuvre clé : Museum Photographs (visiteurs face aux tableaux)\nÉcole de Düsseldorf (élève des Becher)\nPrécision, distance, regard sociologique",img:"Thomas Struth Museum Photographs",wiki:"Thomas_Struth"},
+  {s:"Photographie",q:"Qui est Thomas Ruff ?",a:"🇩🇪 Photographe allemand (1958)\nPortraits neutres géants, images internet, étoiles\nOeuvre clé : Portraits (visages en format monumental)\nÉcole de Düsseldorf — questionne la nature de l'image\nJpegs : agrandissements d'images pixelisées",img:"Thomas Ruff Portraits photography",wiki:"Thomas_Ruff"},
+  {s:"Photographie",q:"Qui est Nobuyoshi Araki ?",a:"🇯🇵 Photographe japonais (1940)\nÉrotisme, fleurs, Tokyo — extrêmement prolifique\nOeuvre clé : Sentimental Journey (lune de miel + mort de sa femme)\nPlus de 500 livres publiés\nControversé : frontière art/pornographie",img:"Nobuyoshi Araki flowers photography",wiki:"Nobuyoshi_Araki"},
+  {s:"Photographie",q:"Qui est Sally Mann ?",a:"🇺🇸 Photographe américaine (1951)\nPortraits intimes de ses enfants, paysages du Sud\nOeuvre clé : Immediate Family (1992, controversé)\nGrand format, procédés anciens (collodion humide)\nMort, mémoire, passage du temps",img:"Sally Mann Immediate Family photography",wiki:"Sally_Mann"},
+  {s:"Photographie",q:"Qui est Martin Parr ?",a:"🇬🇧 Photographe britannique (1952)\nSatire du tourisme de masse et de la classe moyenne\nOeuvre clé : The Last Resort (station balnéaire sordide)\nCouleurs flash crues, humour féroce\nPrésident de Magnum (2013-2017)",img:"Martin Parr The Last Resort",wiki:"Martin_Parr"},
+  {s:"Photographie",q:"Qui est Brassaï ?",a:"🇭🇺🇫🇷 Photographe hongrois-français (1899-1984)\nParis nocturne : bars, prostitution, graffitis\nOeuvre clé : Paris de nuit (1932)\nAmi de Picasso, Dali, Henry Miller\nNé Gyula Halász, nom d'artiste = sa ville natale",img:"Brassai Paris de nuit photography",wiki:"Brassa%C3%AF"},
+  {s:"Photographie",q:"Qui est Stephen Shore ?",a:"🇺🇸 Photographe américain (1947)\nPionnier de la photographie couleur avec Eggleston\nOeuvre clé : Uncommon Places (paysages américains banals)\nA exposé au MoMA à 24 ans (1971)\nProfesseur à Bard College",img:"Stephen Shore Uncommon Places",wiki:"Stephen_Shore"},
+  {s:"Photographie",q:"Qui est Wolfgang Tillmans ?",a:"🇩🇪 Photographe allemand (1968)\nAbstraction, portraits, politique, vie quotidienne\nOeuvre clé : accrochages libres (sans cadre) en galerie\nTurner Prize 2000 — 1er photographe et 1er non-Britannique\nEngagé pro-européen (Brexit)",img:"Wolfgang Tillmans photography installation",wiki:"Wolfgang_Tillmans"},
+  {s:"Photographie",q:"Qui est Rineke Dijkstra ?",a:"🇳🇱 Photographe néerlandaise (1959)\nPortraits frontaux d'adolescents vulnérables\nOeuvre clé : Beach Portraits (ados en maillot, regard direct)\nInfluence : August Sander, Diane Arbus\nSoldats, mères, matadors",img:"Rineke Dijkstra Beach Portraits",wiki:"Rineke_Dijkstra"},
+  {s:"Photographie",q:"Qui est JH Engström ?",a:"🇸🇪 Photographe suédois (1969)\nIntime, brut, autobiographique\nOeuvre clé : Trying to Dance (2004)\nInfluencé par Anders Petersen et Nan Goldin\nMélange vie privée et paysage suédois",img:"JH Engstrom photography",wiki:"JH_Engstr%C3%B6m"},
+  {s:"Photographie",q:"Qui est Malick Sidibé ?",a:"🇲🇱 Photographe malien (1936-2016)\nPortraits de la jeunesse de Bamako (années 60-70)\nOeuvre clé : photos de soirées dansantes\nLion d'Or Venise 2007 (1er Africain)\nJoie, liberté, post-indépendance du Mali",img:"Malick Sidibe Bamako photography",wiki:"Malick_Sidib%C3%A9"},
+  {s:"Photographie",q:"Qui est Seydou Keïta ?",a:"🇲🇱 Photographe malien (1921-2001)\nPortraitiste de studio à Bamako (1948-1962)\nOeuvre clé : portraits en studio avec décors et accessoires\nRedécouvert dans les années 1990\nA défini l'image de la classe moyenne malienne",img:"Seydou Keita portrait Bamako",wiki:"Seydou_Ke%C3%AFta"},
+
+  // ── MOUVEMENTS (suite) ──
+  {s:"Mouvements artistiques",q:"Qu'est-ce que le Bauhaus ?",a:"École allemande (1919-1933, Weimar/Dessau/Berlin)\nFusion art + artisanat + industrie\nGropius, Kandinsky, Klee, Moholy-Nagy\nFermée par les nazis\nA révolutionné design, archi, typo",img:"Bauhaus building Dessau",wiki:"Bauhaus"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que le Dadaïsme ?",a:"Zürich 1916, réaction à la Première Guerre mondiale\nAnti-art, absurde, provocateur\nDuchamp (urinoir), Arp, Tzara, Schwitters\nCabaret Voltaire : lieu de naissance\nA engendré le surréalisme et Fluxus",img:"Marcel Duchamp Fountain Dada",wiki:"Dadaisme"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que le Nouveau Réalisme ?",a:"France 1960, fondé par Pierre Restany\nUtilise des objets réels (affiches, ferraille, déchets)\nKlein, Tinguely, Niki de Saint Phalle, César, Arman\nVersion française du Pop Art\nDéclaration constitutive signée chez Klein",img:"Jean Tinguely sculpture machine",wiki:"Nouveau_r%C3%A9alisme"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que le Cubisme ?",a:"Paris ~1907, Picasso et Braque\nObjets décomposés en formes géométriques\nOeuvre fondatrice : Les Demoiselles d'Avignon (Picasso)\nCubisme analytique → cubisme synthétique\nA ouvert la voie à l'abstraction",img:"Picasso Les Demoiselles d'Avignon",wiki:"Cubisme"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que le Fauvisme ?",a:"Paris 1905, scandale au Salon d'Automne\nCouleurs pures, violentes, non réalistes\nMatisse, Derain, Vlaminck, Dufy\nCritique Louis Vauxcelles : 'Donatello chez les fauves'\nCourt mouvement mais impact immense",img:"Henri Matisse La Danse fauvism",wiki:"Fauvisme"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que l'Art cinétique ?",a:"Années 1950-60, art du mouvement\nŒuvres qui bougent (moteur, vent, spectateur)\nCalder (mobiles), Tinguely (machines), Soto, Cruz-Diez\nOp Art = variante optique (illusions)\nArt + science + perception",img:"Alexander Calder mobile sculpture",wiki:"Art_cin%C3%A9tique"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que le Futurisme ?",a:"Italie 1909, Manifeste de Marinetti\nVitesse, machines, modernité, violence\nBoccioni, Balla, Severini\nOeuvre clé : Boccioni, Formes uniques de continuité dans l'espace\nA influencé Dada, constructivisme, design",img:"Boccioni Unique Forms Continuity Space",wiki:"Futurisme"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que le Constructivisme ?",a:"Russie 1913-1930\nArt au service de la révolution sociale\nTatline (Monument 3e Internationale), Rodchenko, El Lissitzky\nGéométrie, matériaux industriels\nA influencé le Bauhaus et le design graphique",img:"Tatlin Monument Third International",wiki:"Constructivisme_russe"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que De Stijl ?",a:"Pays-Bas 1917, aussi appelé Néoplasticisme\nLignes droites, angles droits, couleurs primaires\nMondrian (grilles), Rietveld (chaise), Van Doesburg\nOeuvre clé : Mondrian, Composition en rouge/bleu/jaune\nRecherche de l'harmonie universelle",img:"Mondrian Composition Red Blue Yellow",wiki:"De_Stijl"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que l'Impressionnisme ?",a:"France ~1874, 1re expo chez Nadar\nLumière naturelle, touche visible, plein air\nMonet, Renoir, Degas, Pissarro, Morisot\nOeuvre clé : Monet, Impression soleil levant (1872)\nRejeté par le Salon officiel → révolution",img:"Monet Impression Soleil Levant",wiki:"Impressionnisme"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que l'Expressionnisme ?",a:"Allemagne début XXe siècle\nÉmotion brute, déformation, couleurs violentes\nDie Brücke (Kirchner), Der Blaue Reiter (Kandinsky, Marc)\nOeuvre clé : Munch, Le Cri (1893, précurseur)\nRéaction au positivisme et à l'impressionnisme",img:"Edvard Munch The Scream",wiki:"Expressionnisme"},
+  {s:"Mouvements artistiques",q:"Qu'est-ce que l'Art relationnel ?",a:"Années 1990, théorisé par Nicolas Bourriaud\nL'art comme rencontre et lien social\nTiravanija (cuisine en galerie), Gonzalez-Torres\nOeuvre clé : bonbons empilés de Gonzalez-Torres\nLe spectateur complète l'oeuvre",img:"Felix Gonzalez-Torres candy pile",wiki:"Esth%C3%A9tique_relationnelle"},
+
+  // ── Plus d'artistes contemporains monde ──
+  {s:"Art contemporain",q:"Qui est Theaster Gates ?",a:"🇺🇸 Artiste américain (1973)\nArt, urbanisme et rénovation sociale à Chicago\nOeuvre clé : Dorchester Projects (maisons abandonnées → art)\nCéramiste, musicien, urbaniste\nL'art comme outil de transformation communautaire",img:"Theaster Gates Dorchester Projects",wiki:"Theaster_Gates"},
+  {s:"Art contemporain",q:"Qui est Kerry James Marshall ?",a:"🇺🇸 Peintre américain (1955)\nFigures noires héroïques dans l'histoire de l'art\nOeuvre clé : Past Times (vendu 21,1 M$, record)\nPeaux intentionnellement très noires\nRevendique la place des Noirs dans les musées",img:"Kerry James Marshall Past Times",wiki:"Kerry_James_Marshall"},
+  {s:"Art contemporain",q:"Qui est Julie Mehretu ?",a:"🇺🇸🇪🇹 Peintre américano-éthiopienne (1970)\nGrandes abstractions avec cartographie et architecture\nOeuvre clé : peintures murales pour Goldman Sachs, SFMOMA\nSuperposition de couches = flux migratoires\nUne des peintres les plus cotées au monde",img:"Julie Mehretu abstract painting",wiki:"Julie_Mehretu"},
+  {s:"Art contemporain",q:"Qui est Cecily Brown ?",a:"🇬🇧 Peintre britannique (1969)\nAbstraction gestuelle + figuration érotique\nOeuvre clé : compositions inspirées de Rubens, de Kooning\nFille du critique David Sylvester et de Shena Mackay\nVit à New York, très cotée",img:"Cecily Brown painting",wiki:"Cecily_Brown"},
+  {s:"Art contemporain",q:"Qui est Pierre Huyghe ?",a:"🇫🇷 Artiste français (1962)\nInstallations vivantes : animaux, écosystèmes, IA\nOeuvre clé : Untitled (Human Mask) — singe au masque\nDog : chien à la patte rose (Documenta 13)\nArt comme système vivant autonome",img:"Pierre Huyghe Untitled Human Mask",wiki:"Pierre_Huyghe"},
+  {s:"Art contemporain",q:"Qui est Tino Sehgal ?",a:"🇬🇧🇩🇪 Artiste britannico-allemand (1976)\nCréé des 'situations construites' (performances sans objet)\nOeuvre clé : These Associations (Tate Turbine Hall)\nAucune documentation, aucune photo autorisée\nLion d'Or Venise 2013",img:"Tino Sehgal These Associations Tate",wiki:"Tino_Sehgal"},
+  {s:"Art contemporain",q:"Qui est Tomás Saraceno ?",a:"🇦🇷 Artiste argentin (1973)\nStructures volantes, toiles d'araignée, utopies\nOeuvre clé : On Space Time Foam (marcher sur des bulles)\nProjet Aerocene (sculptures volantes solaires)\nArt + science + écologie",img:"Tomas Saraceno On Space Time Foam",wiki:"Tom%C3%A1s_Saraceno"},
+  {s:"Art contemporain",q:"Qui est Berlinde De Bruyckere ?",a:"🇧🇪 Sculptrice belge (1964)\nCorps en cire, chevaux écorchés, arbres souffrants\nOeuvre clé : Kreupelhout (Biennale de Venise 2013)\nInfluence : Grünewald, anatomie de la douleur\nBeauté dans la vulnérabilité",img:"Berlinde De Bruyckere sculpture",wiki:"Berlinde_De_Bruyckere"},
+  {s:"Art contemporain",q:"Qui est Pascale Marthine Tayou ?",a:"🇨🇲 Artiste camerounais (1966)\nInstallations colorées, objets recyclés, mondialisation\nOeuvre clé : Plastic Bags (sacs géants colorés suspendus)\nNomade : vit entre Gand, Yaoundé et le monde\nMêle Afrique et global avec humour",img:"Pascale Marthine Tayou Plastic Bags",wiki:"Pascale_Marthine_Tayou"},
+  {s:"Art contemporain",q:"Qui est Oscar Murillo ?",a:"🇨🇴🇬🇧 Artiste colombo-britannique (1986)\nPeinture, installation, performance\nOeuvre clé : toiles cousues + suie + poussière\nTurner Prize 2019 (partagé avec 3 autres)\nFils d'ouvrier, arrivé en Angleterre à 10 ans",img:"Oscar Murillo painting",wiki:"Oscar_Murillo_(artist)"},
+  {s:"Art contemporain",q:"Qui est Lee Bul ?",a:"🇰🇷 Artiste coréenne (1964)\nSculptures futuristes, cyborgs, utopies ratées\nOeuvre clé : Cyborg (sculptures féminines mécaniques)\nInstallations architecturales en miroirs\nPerformance avec costume de monstre mou",img:"Lee Bul Cyborg sculpture",wiki:"Lee_Bul"},
+  {s:"Art contemporain",q:"Qui est Liu Xiaodong ?",a:"🇨🇳 Peintre chinois (1963)\nRéalisme social — peint sur le terrain (in situ)\nOeuvre clé : Disobeying the Rules (travailleurs migrants)\nPeint les gens ordinaires dans leur environnement\nFigure majeure du réalisme chinois contemporain",img:"Liu Xiaodong painting",wiki:"Liu_Xiaodong"},
+  {s:"Art contemporain",q:"Qui est Hito Steyerl ?",a:"🇩🇪 Artiste allemande (1966)\nVidéo, essai, conférences-performances\nOeuvre clé : How Not to Be Seen (tutoriel d'invisibilité)\nCritique de l'image à l'ère numérique\nN°1 du classement Power 100 (ArtReview 2017)",img:"Hito Steyerl How Not to Be Seen",wiki:"Hito_Steyerl"},
+  {s:"Art contemporain",q:"Qui est Otobong Nkanga ?",a:"🇳🇬 Artiste nigériane (1974)\nPerformance, tapisserie, installation\nOeuvre clé : Taste of a Stone (ressources naturelles)\nLien entre corps, terre, exploitation minière\nLion d'Or Venise 2024 (mention spéciale)",img:"Otobong Nkanga Taste of a Stone",wiki:"Otobong_Nkanga"},
+  {s:"Art contemporain",q:"Qui est Danh Vo ?",a:"🇩🇰🇻🇳 Artiste dano-vietnamien (1975)\nObjets historiques réappropriés\nOeuvre clé : fragments de la Statue de la Liberté\nHiistoire personnelle (boat people) + colonialisme\nHugo Boss Prize 2012",img:"Danh Vo We The People Statue Liberty",wiki:"Danh_V%C5%8D"},
+  {s:"Art contemporain",q:"Qui est Rashid Johnson ?",a:"🇺🇸 Artiste américain (1977)\nPeinture, sculpture, vidéo — identité noire\nOeuvre clé : Anxious Men (visages en savon noir et cire)\nBeurre de karité, plantes, carreaux miroir\nAfrofuturisme et anxiété contemporaine",img:"Rashid Johnson Anxious Men",wiki:"Rashid_Johnson"},
+  {s:"Art contemporain",q:"Qui est Lynette Yiadom-Boakye ?",a:"🇬🇧 Peintre britannique (1977), d'origine ghanéenne\nPortraits de personnages noirs fictifs\nOeuvre clé : peintures achevées en une journée\nPas de modèles réels — personnages inventés\nTurner Prize finaliste 2013",img:"Lynette Yiadom-Boakye painting portrait",wiki:"Lynette_Yiadom-Boakye"},
+  {s:"Art contemporain",q:"Qui est Katharina Grosse ?",a:"🇩🇪 Peintre allemande (1961)\nPeinture au pistolet sur bâtiments, paysages, objets\nOeuvre clé : It Wasn't Us (Hamburger Bahnhof, Berlin)\nCouleurs explosives hors de la toile\nLa peinture envahit le monde réel",img:"Katharina Grosse spray painting installation",wiki:"Katharina_Grosse"},
+  {s:"Art contemporain",q:"Qui est Phyllida Barlow ?",a:"🇬🇧 Sculptrice britannique (1944-2023)\nSculptures monumentales en matériaux pauvres (carton, tissu)\nOeuvre clé : folly (Biennale de Venise 2017)\nReconnue tardivement (après 65 ans)\nProfesseure de Rachel Whiteread",img:"Phyllida Barlow folly Venice",wiki:"Phyllida_Barlow"},
+  {s:"Art contemporain",q:"Qui est Wangechi Mutu ?",a:"🇰🇪🇺🇸 Artiste kenyane-américaine (1972)\nCollages, sculptures — corps féminin hybride\nOeuvre clé : 4 caryatides en bronze (Met Museum, façade)\nAfrofuturisme, post-colonialisme\nPremière artiste à occuper les niches du Met",img:"Wangechi Mutu Met Museum caryatids",wiki:"Wangechi_Mutu"},
+  {s:"Art contemporain",q:"Qui est Adrián Villar Rojas ?",a:"🇦🇷 Artiste argentin (1980)\nInstallations monumentales qui se décomposent\nOeuvre clé : sculptures en argile crue (Documenta 13)\nFin du monde, ruines du futur\nLaisse ses œuvres se détruire volontairement",img:"Adrian Villar Rojas sculpture clay",wiki:"Adri%C3%A1n_Villar_Rojas"},
+];
+
+let cards = [];
+let filtered = [];
+let idx = 0;
+let currentSubject = 'Tous';
+
+function load() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    cards = JSON.parse(saved);
+  } else {
+    cards = [...DEFAULT_CARDS];
+    save();
+  }
+}
+
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(cards)); }
+
+function getSubjects() {
+  return [...new Set(cards.map(c => c.s))].sort();
+}
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function renderSubjects() {
+  const el = document.getElementById('subjects');
+  const subjects = getSubjects();
+  el.innerHTML = '<button class="' + (currentSubject === 'Tous' ? 'active' : '') + '" onclick="filterBy(\'Tous\')">Tous</button>';
+  subjects.forEach(s => {
+    el.innerHTML += '<button class="' + (currentSubject === s ? 'active' : '') + '" onclick="filterBy(\'' + s.replace(/'/g, "\\'") + '\')">' + s + '</button>';
+  });
+  const dl = document.getElementById('subject-list');
+  dl.innerHTML = subjects.map(s => '<option value="' + s + '">').join('');
+}
+
+function filterBy(subject) {
+  currentSubject = subject;
+  filtered = subject === 'Tous' ? [...cards] : cards.filter(c => c.s === subject);
+  shuffleArray(filtered);
+  idx = 0;
+  renderSubjects();
+  showCard();
+}
+
+function showCard() {
+  const card = document.getElementById('card');
+  card.classList.remove('flipped');
+  const imgBtn = document.getElementById('see-work-btn');
+  const wikiBtn = document.getElementById('wiki-btn');
+  if (filtered.length === 0) {
+    document.getElementById('front-text').textContent = 'Aucune carte';
+    document.getElementById('back-text').innerHTML = '';
+    document.getElementById('counter').textContent = '0 / 0';
+    imgBtn.style.display = 'none';
+    wikiBtn.style.display = 'none';
+    return;
+  }
+  const c = filtered[idx];
+  document.getElementById('front-text').textContent = c.q;
+  // Format answer as bullet points
+  const lines = c.a.split('\n').filter(l => l.trim());
+  const html = '<ul>' + lines.map(l => '<li>' + l.replace(/</g,'&lt;') + '</li>').join('') + '</ul>';
+  document.getElementById('back-text').innerHTML = html;
+  document.getElementById('counter').textContent = (idx + 1) + ' / ' + filtered.length;
+  if (c.img) {
+    imgBtn.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(c.img);
+    imgBtn.style.display = 'inline-block';
+  } else { imgBtn.style.display = 'none'; }
+  if (c.wiki) {
+    wikiBtn.href = 'https://fr.wikipedia.org/wiki/' + c.wiki;
+    wikiBtn.style.display = 'inline-block';
+  } else { wikiBtn.style.display = 'none'; }
+}
+
+function handleCardClick(e) {
+  if (e.target.closest('.card-link')) return;
+  flip();
+}
+
+function flip() { document.getElementById('card').classList.toggle('flipped'); }
+
+function next() {
+  if (filtered.length === 0) return;
+  idx = (idx + 1) % filtered.length;
+  showCard();
+}
+
+function prev() {
+  if (filtered.length === 0) return;
+  idx = (idx - 1 + filtered.length) % filtered.length;
+  showCard();
+}
+
+// ── AI Generation ──
+let pendingCard = null;
+const API_KEY_STORAGE = 'flashcards_api_key';
+
+function openAI() {
+  const modal = document.getElementById('ai-modal');
+  modal.classList.add('open');
+  document.getElementById('ai-name').value = '';
+  document.getElementById('ai-status').textContent = '';
+  document.getElementById('ai-preview').style.display = 'none';
+  // Restore saved API key
+  const savedKey = localStorage.getItem(API_KEY_STORAGE);
+  if (savedKey) document.getElementById('api-key').value = savedKey;
+  // Update subject datalist
+  const dl = document.getElementById('subject-list-ai');
+  dl.innerHTML = getSubjects().map(s => '<option value="' + s + '">').join('');
+}
+function closeAI() { document.getElementById('ai-modal').classList.remove('open'); }
+
+async function generateCard() {
+  const name = document.getElementById('ai-name').value.trim();
+  const subject = document.getElementById('ai-subject').value.trim();
+  const apiKey = document.getElementById('api-key').value.trim();
+  if (!name) return alert('Entre un nom.');
+  if (!apiKey) return alert('Entre ta clé API Anthropic.');
+
+  // Save API key locally
+  localStorage.setItem(API_KEY_STORAGE, apiKey);
+
+  const status = document.getElementById('ai-status');
+  const btn = document.getElementById('ai-gen-btn');
+  btn.disabled = true;
+  btn.textContent = 'Génération...';
+  status.textContent = 'Appel à Claude en cours...';
+
+  const prompt = `Tu es un expert en art et culture. Génère une fiche flashcard pour "${name}".
+
+Réponds UNIQUEMENT avec un JSON valide, sans texte avant ni après, dans ce format exact :
+{
+  "q": "Qui est ${name} ?",
+  "a": "drapeau_pays Discipline + nationalité (année_naissance-année_mort_ou_vide)\\nDeuxième fait clé\\nTroisième fait clé\\nOeuvre clé : nom de l'oeuvre la plus connue\\nUn fait marquant ou record",
+  "img": "recherche google images pour l'oeuvre la plus connue",
+  "wiki": "slug_wikipedia_fr"
+}
+
+Règles pour la réponse "a" :
+- Commence par le drapeau emoji du pays
+- Maximum 5 lignes séparées par \\n
+- Ultra synthétique, style bullet point
+- Inclus toujours "Oeuvre clé : ..."
+- Le wiki slug doit correspondre à la page Wikipedia FR (avec accents encodés en URL si besoin)`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 400,
+        messages: [{role: 'user', content: prompt}]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error('API error ' + resp.status + ': ' + err);
+    }
+
+    const data = await resp.json();
+    const text = data.content[0].text.trim();
+
+    // Parse JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Pas de JSON dans la réponse');
+
+    const card = JSON.parse(jsonMatch[0]);
+    card.s = subject || 'Art contemporain';
+
+    if (!card.q || !card.a) throw new Error('Fiche incomplète');
+
+    pendingCard = card;
+
+    // Show preview
+    const lines = card.a.split('\n').filter(l => l.trim());
+    const previewHtml = '<strong>' + card.q + '</strong><br><br>' +
+      lines.map(l => '→ ' + l).join('<br>');
+    document.getElementById('ai-preview-text').innerHTML = previewHtml;
+    document.getElementById('ai-preview').style.display = 'block';
+    status.textContent = 'Fiche générée ! Vérifie et ajoute.';
+
+  } catch(e) {
+    status.textContent = 'Erreur : ' + e.message;
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Générer la fiche';
+  }
+}
+
+function acceptGenerated() {
+  if (!pendingCard) return;
+  cards.push(pendingCard);
+  save();
+  pendingCard = null;
+  closeAI();
+  filterBy(currentSubject);
+}
+
+function discardGenerated() {
+  pendingCard = null;
+  document.getElementById('ai-preview').style.display = 'none';
+  document.getElementById('ai-status').textContent = 'Fiche rejetée.';
+}
+
+function openAdd() { document.getElementById('add-modal').classList.add('open'); }
+function closeAdd() { document.getElementById('add-modal').classList.remove('open'); }
+
+function saveCard() {
+  const s = document.getElementById('new-subject').value.trim();
+  const q = document.getElementById('new-question').value.trim();
+  const a = document.getElementById('new-answer').value.trim();
+  const img = document.getElementById('new-img').value.trim();
+  const wiki = document.getElementById('new-wiki').value.trim();
+  if (!s || !q || !a) return alert('Remplis sujet, question et réponse.');
+  const card = {s, q, a};
+  if (img) card.img = img;
+  if (wiki) card.wiki = wiki;
+  cards.push(card);
+  save();
+  document.getElementById('new-subject').value = '';
+  document.getElementById('new-question').value = '';
+  document.getElementById('new-answer').value = '';
+  document.getElementById('new-img').value = '';
+  document.getElementById('new-wiki').value = '';
+  closeAdd();
+  filterBy(currentSubject);
+}
+
+function deleteCard() {
+  if (filtered.length === 0) return;
+  const c = filtered[idx];
+  if (!confirm('Supprimer cette carte ?')) return;
+  const ci = cards.indexOf(c);
+  if (ci > -1) cards.splice(ci, 1);
+  save();
+  filterBy(currentSubject);
+}
+
+function resetCards() {
+  if (!confirm('Réinitialiser ? Tes cartes perso seront perdues.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  cards = [...DEFAULT_CARDS];
+  save();
+  filterBy('Tous');
+}
+
+function openImportExport() {
+  document.getElementById('ie-data').value = '';
+  document.getElementById('ie-modal').classList.add('open');
+}
+function closeIE() { document.getElementById('ie-modal').classList.remove('open'); }
+
+function exportData() {
+  document.getElementById('ie-data').value = JSON.stringify(cards, null, 2);
+}
+
+function importData() {
+  try {
+    const data = JSON.parse(document.getElementById('ie-data').value);
+    if (!Array.isArray(data)) throw new Error();
+    let count = 0;
+    data.forEach(c => { if (c.s && c.q && c.a) { cards.push(c); count++; } });
+    save();
+    filterBy(currentSubject);
+    closeIE();
+    alert(count + ' cartes importées !');
+  } catch(e) { alert('JSON invalide.'); }
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (document.querySelector('.modal-overlay.open')) return;
+  if (e.key === 'ArrowRight') next();
+  else if (e.key === 'ArrowLeft') prev();
+  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); }
+});
+
+// Init — always shuffled
+load();
+filterBy('Tous');
+</script>
+</body>
+</html>
