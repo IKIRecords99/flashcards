@@ -645,6 +645,7 @@ function prev() {
 // ── AI Generation ──
 let pendingCard = null;
 const API_KEY_STORAGE = 'flashcards_gemini_key';
+const DEFAULT_GEMINI_KEY = 'AIzaSyAZlSdJ-MmEuwQre8QYzaGECTFz3t8pk00';
 
 function openAI() {
   const modal = document.getElementById('ai-modal');
@@ -652,9 +653,9 @@ function openAI() {
   document.getElementById('ai-name').value = '';
   document.getElementById('ai-status').textContent = '';
   document.getElementById('ai-preview').style.display = 'none';
-  // Restore saved API key
-  const savedKey = localStorage.getItem(API_KEY_STORAGE);
-  if (savedKey) document.getElementById('api-key').value = savedKey;
+  // Restore saved API key or use default
+  const savedKey = localStorage.getItem(API_KEY_STORAGE) || DEFAULT_GEMINI_KEY;
+  document.getElementById('api-key').value = savedKey;
   // Update subject datalist
   const dl = document.getElementById('subject-list-ai');
   dl.innerHTML = getSubjects().map(s => '<option value="' + s + '">').join('');
@@ -706,6 +707,7 @@ Règles pour la réponse "a" :
     });
 
     if (!resp.ok) {
+      if (resp.status === 429) throw new Error('Quota Gemini épuisé. Attends quelques secondes ou crée une nouvelle clé sur aistudio.google.com/apikey');
       const err = await resp.text();
       throw new Error('API error ' + resp.status + ': ' + err);
     }
