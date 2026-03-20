@@ -247,39 +247,12 @@ button.active { background: #002FA7; color: #fff; border-color: #002FA7; }
 </div>
 
 <div class="actions">
-  <button onclick="openAI()">+ Générer</button>
   <button onclick="openAdd()">+ Manuel</button>
   <button onclick="openImportExport()">Import / Export</button>
   <button onclick="deleteCard()">Supprimer</button>
   <button onclick="resetCards()">Reset</button>
 </div>
 
-<!-- AI Generate modal -->
-<div class="modal-overlay" id="ai-modal">
-  <div class="modal">
-    <h2>Génération auto</h2>
-    <label>Nom (artiste, photographe, mouvement...)</label>
-    <input id="ai-name" placeholder="ex: Frida Kahlo" autofocus>
-    <label>Catégorie</label>
-    <input id="ai-subject" list="subject-list-ai" placeholder="ex: Art contemporain" value="Art contemporain">
-    <datalist id="subject-list-ai"></datalist>
-    <label>Clé API Gemini (<a href="https://aistudio.google.com/apikey" target="_blank" style="color:#002FA7">gratuite ici</a>)</label>
-    <input id="api-key" type="password" placeholder="AIza...">
-    <div class="btn-row">
-      <button onclick="closeAI()">Annuler</button>
-      <button onclick="generateCard()" id="ai-gen-btn">Générer la fiche</button>
-    </div>
-    <div id="ai-status" style="margin-top:12px;font-size:0.8em;color:#999;"></div>
-    <!-- Preview before saving -->
-    <div id="ai-preview" style="display:none;margin-top:16px;padding:16px;background:#f5f5f7;border-radius:10px;">
-      <div id="ai-preview-text" style="font-size:0.85em;line-height:1.7;color:#333;"></div>
-      <div class="btn-row" style="margin-top:12px;">
-        <button onclick="discardGenerated()">Rejeter</button>
-        <button onclick="acceptGenerated()">Ajouter la carte</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- Add card modal (manual) -->
 <div class="modal-overlay" id="add-modal">
@@ -642,121 +615,6 @@ function prev() {
   showCard();
 }
 
-// ── AI Generation ──
-let pendingCard = null;
-const API_KEY_STORAGE = 'flashcards_gemini_key';
-const DEFAULT_GEMINI_KEY = 'AIzaSyAZlSdJ-MmEuwQre8QYzaGECTFz3t8pk00';
-
-function openAI() {
-  const modal = document.getElementById('ai-modal');
-  modal.classList.add('open');
-  document.getElementById('ai-name').value = '';
-  document.getElementById('ai-status').textContent = '';
-  document.getElementById('ai-preview').style.display = 'none';
-  // Restore saved API key or use default
-  const savedKey = localStorage.getItem(API_KEY_STORAGE) || DEFAULT_GEMINI_KEY;
-  document.getElementById('api-key').value = savedKey;
-  // Update subject datalist
-  const dl = document.getElementById('subject-list-ai');
-  dl.innerHTML = getSubjects().map(s => '<option value="' + s + '">').join('');
-}
-function closeAI() { document.getElementById('ai-modal').classList.remove('open'); }
-
-async function generateCard() {
-  const name = document.getElementById('ai-name').value.trim();
-  const subject = document.getElementById('ai-subject').value.trim();
-  const apiKey = document.getElementById('api-key').value.trim();
-  if (!name) return alert('Entre un nom.');
-  if (!apiKey) return alert('Entre ta clé API Gemini.');
-
-  // Save API key locally
-  localStorage.setItem(API_KEY_STORAGE, apiKey);
-
-  const status = document.getElementById('ai-status');
-  const btn = document.getElementById('ai-gen-btn');
-  btn.disabled = true;
-  btn.textContent = 'Génération...';
-  status.textContent = 'Appel à Gemini en cours...';
-
-  const prompt = `Tu es un expert en art et culture. Génère une fiche flashcard pour "${name}".
-
-Réponds UNIQUEMENT avec un JSON valide, sans texte avant ni après, dans ce format exact :
-{
-  "q": "Qui est ${name} ?",
-  "a": "drapeau_pays Discipline + nationalité (année_naissance-année_mort_ou_vide)\\nMédium : discipline(s) principale(s)\\nDeuxième fait clé\\nOeuvre clé : nom de l'oeuvre la plus connue\\nUn fait marquant ou record",
-  "img": "recherche google images pour l'oeuvre la plus connue",
-  "wiki": "slug_wikipedia_fr"
-}
-
-Règles pour la réponse "a" :
-- Commence par le drapeau emoji du pays
-- Ligne 2 = Médium : peinture, sculpture, photo, vidéo, installation, etc.
-- Maximum 6 lignes séparées par \\n
-- Ultra synthétique, style bullet point
-- Inclus toujours "Oeuvre clé : ..."
-- Le wiki slug doit correspondre à la page Wikipedia FR (avec accents encodés en URL si besoin)`;
-
-  try {
-    const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 400 }
-      })
-    });
-
-    if (!resp.ok) {
-      if (resp.status === 429) throw new Error('Quota Gemini épuisé. Attends quelques secondes ou crée une nouvelle clé sur aistudio.google.com/apikey');
-      const err = await resp.text();
-      throw new Error('API error ' + resp.status + ': ' + err);
-    }
-
-    const data = await resp.json();
-    const text = data.candidates[0].content.parts[0].text.trim();
-
-    // Parse JSON from response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Pas de JSON dans la réponse');
-
-    const card = JSON.parse(jsonMatch[0]);
-    card.s = subject || 'Art contemporain';
-
-    if (!card.q || !card.a) throw new Error('Fiche incomplète');
-
-    pendingCard = card;
-
-    // Show preview
-    const lines = card.a.split('\n').filter(l => l.trim());
-    const previewHtml = '<strong>' + card.q + '</strong><br><br>' +
-      lines.map(l => '→ ' + l).join('<br>');
-    document.getElementById('ai-preview-text').innerHTML = previewHtml;
-    document.getElementById('ai-preview').style.display = 'block';
-    status.textContent = 'Fiche générée ! Vérifie et ajoute.';
-
-  } catch(e) {
-    status.textContent = 'Erreur : ' + e.message;
-    console.error(e);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Générer la fiche';
-  }
-}
-
-function acceptGenerated() {
-  if (!pendingCard) return;
-  cards.push(pendingCard);
-  save();
-  pendingCard = null;
-  closeAI();
-  filterBy(currentSubject);
-}
-
-function discardGenerated() {
-  pendingCard = null;
-  document.getElementById('ai-preview').style.display = 'none';
-  document.getElementById('ai-status').textContent = 'Fiche rejetée.';
-}
 
 function openAdd() { document.getElementById('add-modal').classList.add('open'); }
 function closeAdd() { document.getElementById('add-modal').classList.remove('open'); }
